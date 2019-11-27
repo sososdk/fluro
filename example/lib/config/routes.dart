@@ -8,6 +8,7 @@
  */
 import 'package:fluro/fluro.dart';
 import 'package:flutter/material.dart';
+
 import './route_handlers.dart';
 
 class Routes {
@@ -18,8 +19,9 @@ class Routes {
   static String deepLink = "/message";
 
   static void configureRoutes(Router router) {
-    router.notFoundHandler = Handler(
-        handlerFunc: (BuildContext context, Map<String, List<String>> params) {
+    // ignore: missing_return
+    router.notFoundHandler = Handler(handlerFunc: (BuildContext context,
+        Map<String, List<String>> params, Object arguments) {
       print("ROUTE WAS NOT FOUND !!!");
     });
     router.define(root, handler: rootHandler);

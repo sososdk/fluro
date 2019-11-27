@@ -261,7 +261,8 @@ class HomeComponentState extends State<HomeComponent> {
       );
     } else if (key == "fixed-trans") {
       Application.router.navigateTo(
-          context, "/demo/fixedtrans?message=Hello!&color_hex=#f4424b");
+          context, "/demo/fixedtrans?message=Hello!&color_hex=#f4424b",
+          arguments: r'''Haha, I'm a object arguments''');
     } else {
       message = "You tapped the function button!";
       Application.router.navigateTo(context, "/demo/func?message=$message");

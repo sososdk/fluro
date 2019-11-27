@@ -6,21 +6,25 @@
  * Copyright (c) 2019 Yakka, LLC. All rights reserved.
  * See LICENSE for distribution and usage details.
  */
-import '../../helpers/color_helpers.dart';
 import 'package:flutter/material.dart';
+
+import '../../helpers/color_helpers.dart';
 
 class DemoSimpleComponent extends StatelessWidget {
   DemoSimpleComponent(
       {String message = "Testing",
       Color color = const Color(0xFFFFFFFF),
-      String result})
+      String result,
+      Object arguments})
       : this.message = message,
         this.color = color,
-        this.result = result;
+        this.result = result,
+        this.arguments = arguments;
 
   final String message;
   final Color color;
   final String result;
+  final Object arguments;
 
   @override
   Widget build(BuildContext context) {
@@ -35,9 +39,9 @@ class DemoSimpleComponent extends StatelessWidget {
             width: 260.0,
           ),
           Padding(
-            padding: EdgeInsets.only(left: 50.0, right: 50.0, top: 15.0),
-            child: Text(
-              message,
+            padding: new EdgeInsets.only(left: 50.0, right: 50.0, top: 15.0),
+            child: new Text(
+              '$message${arguments == null ? '' : '\n$arguments'}',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: ColorHelpers.blackOrWhiteContrastColor(color),

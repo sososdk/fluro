@@ -32,6 +32,7 @@ class AppComponentState extends State<AppComponent> {
       title: 'Fluro',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
+        platform: TargetPlatform.iOS,
         primarySwatch: Colors.blue,
       ),
       onGenerateRoute: Application.router.generator,
