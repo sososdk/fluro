@@ -7,8 +7,8 @@ author: Yakka, LLC <apps@theyakka.com>
 homepage: https://github.com/theyakka/fluro
 
 environment:
-  sdk: ">=2.1.0 <3.0.0"
-  flutter: ">=1.2.0"
+  sdk: ">=2.4.0 <3.0.0"
+  flutter: ">=1.9.1+hotfix.6 <2.0.0"
 
 dependencies:
   flutter:
@@ -17,7 +17,6 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  test: ^1.6.0
 
 flutter:
   uses-material-design: false

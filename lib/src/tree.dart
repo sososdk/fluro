@@ -16,40 +16,41 @@ enum RouteTreeNodeType {
 }
 
 class AppRouteMatch {
-  // constructors
-  AppRouteMatch(this.route);
+  final AppRoute route;
+  final Map<String, List<String>> parameters;
 
-  // properties
-  AppRoute route;
-  Map<String, List<String>> parameters = <String, List<String>>{};
+  AppRouteMatch(this.route, [Map<String, List<String>> parameters])
+      : assert(route != null),
+        this.parameters = parameters ?? {};
 }
 
 class RouteTreeNodeMatch {
-  // constructors
-  RouteTreeNodeMatch(this.node);
+  final RouteTreeNode node;
+  final Map<String, List<String>> parameters;
 
-  RouteTreeNodeMatch.fromMatch(RouteTreeNodeMatch match, this.node) {
-    parameters = <String, List<String>>{};
-    if (match != null) {
-      parameters.addAll(match.parameters);
-    }
-  }
+  RouteTreeNodeMatch(this.node, [Map<String, List<String>> parameters])
+      : assert(node != null),
+        this.parameters = parameters ?? {};
 
-  // properties
-  RouteTreeNode node;
-  Map<String, List<String>> parameters = <String, List<String>>{};
+  RouteTreeNodeMatch.fromMatch(RouteTreeNodeMatch match, RouteTreeNode node)
+      : this(node, match?.parameters);
 }
 
 class RouteTreeNode {
-  // constructors
-  RouteTreeNode(this.part, this.type);
+  final String part;
+  final RouteTreeNodeType type;
+  final List<AppRoute> routes;
+  final List<RouteTreeNode> nodes;
+  final RouteTreeNode parent;
 
-  // properties
-  String part;
-  RouteTreeNodeType type;
-  List<AppRoute> routes = <AppRoute>[];
-  List<RouteTreeNode> nodes = <RouteTreeNode>[];
-  RouteTreeNode parent;
+  RouteTreeNode(
+    this.part,
+    this.type, {
+    List<AppRoute> routes,
+    List<RouteTreeNode> nodes,
+    this.parent,
+  })  : this.routes = routes ?? [],
+        this.nodes = nodes ?? [];
 
   bool isParameter() {
     return type == RouteTreeNodeType.parameter;
@@ -58,12 +59,12 @@ class RouteTreeNode {
 
 class RouteTree {
   // private
-  final List<RouteTreeNode> _nodes = <RouteTreeNode>[];
+  final _nodes = <RouteTreeNode>[];
   bool _hasDefaultRoute = false;
 
   // addRoute - add a route to the route tree
   void addRoute(AppRoute route) {
-    String path = route.route;
+    var path = route.route;
     // is root/default route, just add it
     if (path == Navigator.defaultRouteName) {
       if (_hasDefaultRoute) {
@@ -71,8 +72,8 @@ class RouteTree {
         // could be affected
         throw ("Default route was already defined");
       }
-      var node = RouteTreeNode(path, RouteTreeNodeType.component);
-      node.routes = [route];
+      var node =
+          RouteTreeNode(path, RouteTreeNodeType.component, routes: [route]);
       _nodes.add(node);
       _hasDefaultRoute = true;
       return;
@@ -80,15 +81,14 @@ class RouteTree {
     if (path.startsWith("/")) {
       path = path.substring(1);
     }
-    List<String> pathComponents = path.split('/');
+    var pathComponents = path.split('/');
     RouteTreeNode parent;
     for (int i = 0; i < pathComponents.length; i++) {
-      String component = pathComponents[i];
-      RouteTreeNode node = _nodeForComponent(component, parent);
+      var component = pathComponents[i];
+      var node = _nodeForComponent(component, parent);
       if (node == null) {
-        RouteTreeNodeType type = _typeForComponent(component);
-        node = RouteTreeNode(component, type);
-        node.parent = parent;
+        node = RouteTreeNode(component, _typeForComponent(component),
+            parent: parent);
         if (parent == null) {
           _nodes.add(node);
         } else {
@@ -96,54 +96,46 @@ class RouteTree {
         }
       }
       if (i == pathComponents.length - 1) {
-        if (node.routes == null) {
-          node.routes = [route];
-        } else {
-          node.routes.add(route);
-        }
+        node.routes.add(route);
       }
       parent = node;
     }
   }
 
   AppRouteMatch matchRoute(String path) {
-    String usePath = path;
+    var usePath = path;
     if (usePath.startsWith("/")) {
       usePath = path.substring(1);
     }
-    List<String> components = usePath.split("/");
+    var components = usePath.split("/");
     if (path == Navigator.defaultRouteName) {
       components = ["/"];
     }
 
-    Map<RouteTreeNode, RouteTreeNodeMatch> nodeMatches =
-        <RouteTreeNode, RouteTreeNodeMatch>{};
-    List<RouteTreeNode> nodesToCheck = _nodes;
+    var nodeMatches = <RouteTreeNode, RouteTreeNodeMatch>{};
+    var nodesToCheck = _nodes;
     for (String checkComponent in components) {
-      Map<RouteTreeNode, RouteTreeNodeMatch> currentMatches =
-          <RouteTreeNode, RouteTreeNodeMatch>{};
-      List<RouteTreeNode> nextNodes = <RouteTreeNode>[];
+      var currentMatches = <RouteTreeNode, RouteTreeNodeMatch>{};
+      var nextNodes = <RouteTreeNode>[];
       for (RouteTreeNode node in nodesToCheck) {
-        String pathPart = checkComponent;
+        var pathPart = checkComponent;
         Map<String, List<String>> queryMap;
         if (checkComponent.contains("?")) {
           var splitParam = checkComponent.split("?");
           pathPart = splitParam[0];
           queryMap = parseQueryString(splitParam[1]);
         }
-        bool isMatch = (node.part == pathPart || node.isParameter());
+        var isMatch = (node.part == pathPart || node.isParameter());
         if (isMatch) {
-          RouteTreeNodeMatch parentMatch = nodeMatches[node.parent];
-          RouteTreeNodeMatch match =
-              RouteTreeNodeMatch.fromMatch(parentMatch, node);
+          var parentMatch = nodeMatches[node.parent];
+          var match = RouteTreeNodeMatch.fromMatch(parentMatch, node);
           if (node.isParameter()) {
-            String paramKey = node.part.substring(1);
+            var paramKey = node.part.substring(1);
             match.parameters[paramKey] = [pathPart];
           }
           if (queryMap != null) {
             match.parameters.addAll(queryMap);
           }
-//          print("matched: ${node.part}, isParam: ${node.isParameter()}, params: ${match.parameters}");
           currentMatches[node] = match;
           if (node.nodes != null) {
             nextNodes.addAll(node.nodes);
@@ -156,18 +148,12 @@ class RouteTree {
         return null;
       }
     }
-    List<RouteTreeNodeMatch> matches = nodeMatches.values.toList();
+    var matches = nodeMatches.values.toList();
     if (matches.length > 0) {
-      RouteTreeNodeMatch match = matches.first;
-      RouteTreeNode nodeToUse = match.node;
-//			print("using match: ${match}, ${nodeToUse?.part}, ${match?.parameters}");
-      if (nodeToUse != null &&
-          nodeToUse.routes != null &&
-          nodeToUse.routes.length > 0) {
-        List<AppRoute> routes = nodeToUse.routes;
-        AppRouteMatch routeMatch = AppRouteMatch(routes[0]);
-        routeMatch.parameters = match.parameters;
-        return routeMatch;
+      var match = matches.first;
+      var nodeToUse = match.node;
+      if ((nodeToUse?.routes?.length ?? 0) > 0) {
+        return AppRouteMatch(nodeToUse.routes[0], match.parameters);
       }
     }
     return null;
@@ -178,9 +164,9 @@ class RouteTree {
   }
 
   void _printSubTree({RouteTreeNode parent, int level = 0}) {
-    List<RouteTreeNode> nodes = parent != null ? parent.nodes : _nodes;
+    var nodes = parent != null ? parent.nodes : _nodes;
     for (RouteTreeNode node in nodes) {
-      String indent = "";
+      var indent = "";
       for (int i = 0; i < level; i++) {
         indent += "    ";
       }
@@ -192,7 +178,7 @@ class RouteTree {
   }
 
   RouteTreeNode _nodeForComponent(String component, RouteTreeNode parent) {
-    List<RouteTreeNode> nodes = _nodes;
+    var nodes = _nodes;
     if (parent != null) {
       // search parent for sub-node matches
       nodes = parent.nodes;
@@ -206,7 +192,7 @@ class RouteTree {
   }
 
   RouteTreeNodeType _typeForComponent(String component) {
-    RouteTreeNodeType type = RouteTreeNodeType.component;
+    var type = RouteTreeNodeType.component;
     if (_isParameterComponent(component)) {
       type = RouteTreeNodeType.parameter;
     }
@@ -222,10 +208,10 @@ class RouteTree {
     var search = RegExp('([^&=]+)=?([^&]*)');
     var params = Map<String, List<String>>();
     if (query.startsWith('?')) query = query.substring(1);
-    decode(String s) => Uri.decodeComponent(s.replaceAll('+', ' '));
+    String decode(String s) => Uri.decodeComponent(s.replaceAll('+', ' '));
     for (Match match in search.allMatches(query)) {
-      String key = decode(match.group(1));
-      String value = decode(match.group(2));
+      var key = decode(match.group(1));
+      var value = decode(match.group(2));
       if (params.containsKey(key)) {
         params[key].add(value);
       } else {

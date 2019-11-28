@@ -17,39 +17,33 @@ enum HandlerType {
 
 ///
 class Handler {
-  Handler({this.type = HandlerType.route, this.handlerFunc});
   final HandlerType type;
   final HandlerFunc handlerFunc;
+
+  Handler({this.type = HandlerType.route, this.handlerFunc});
 }
 
 ///
-typedef Route<T> RouteCreator<T>(
-    RouteSettings route, Map<String, List<String>> parameters);
-
-///
-typedef Widget HandlerFunc(BuildContext context,
-    Map<String, List<String>> parameters, Object arguments);
+typedef HandlerFunc(BuildContext context, Map<String, List<String>> parameters,
+    Object arguments);
 
 ///
 class AppRoute {
-  String route;
-  dynamic handler;
-  TransitionType transitionType;
+  final String route;
+  final Handler handler;
+  final TransitionType transitionType;
+
   AppRoute(this.route, this.handler, {this.transitionType});
 }
 
 enum TransitionType {
   native,
   nativeModal,
+  fadeIn,
   inFromLeft,
   inFromRight,
   inFromBottom,
-  fadeIn,
   custom, // if using custom then you must also provide a transition
-  material,
-  materialFullScreenDialog,
-  cupertino,
-  cupertinoFullScreenDialog,
 }
 
 enum RouteMatchType {
@@ -60,18 +54,21 @@ enum RouteMatchType {
 
 ///
 class RouteMatch {
-  RouteMatch(
-      {this.matchType = RouteMatchType.noMatch,
-      this.route,
-      this.errorMessage = "Unable to match route. Please check the logs."});
   final Route<dynamic> route;
   final RouteMatchType matchType;
   final String errorMessage;
+
+  RouteMatch({
+    this.matchType = RouteMatchType.noMatch,
+    this.route,
+    this.errorMessage = "Unable to match route. Please check the logs.",
+  });
 }
 
 class RouteNotFoundException implements Exception {
   final String message;
   final String path;
+
   RouteNotFoundException(this.message, this.path);
 
   @override

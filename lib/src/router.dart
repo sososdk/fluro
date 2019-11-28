@@ -8,7 +8,6 @@
  */
 
 import 'dart:async';
-import 'dart:io';
 
 import 'package:fluro/fluro.dart';
 import 'package:fluro/src/common.dart';
@@ -42,14 +41,17 @@ class Router {
       Navigator.pop<T>(context, result);
 
   ///
-  Future<T> navigateTo<T extends Object>(BuildContext context, String path,
-      {Object arguments,
-      bool replace = false,
-      Object result,
-      bool clearStack = false,
-      TransitionType transition,
-      Duration transitionDuration = const Duration(milliseconds: 250),
-      RouteTransitionsBuilder transitionBuilder}) {
+  Future<T> navigateTo<T extends Object>(
+    BuildContext context,
+    String path, {
+    Object arguments,
+    bool replace = false,
+    Object result,
+    bool clearStack = false,
+    TransitionType transition,
+    Duration transitionDuration = const Duration(milliseconds: 300),
+    RouteTransitionsBuilder transitionBuilder,
+  }) {
     assert(() {
       if (result != null)
         return replace;
@@ -61,15 +63,14 @@ class Router {
         transitionType: transition,
         transitionsBuilder: transitionBuilder,
         transitionDuration: transitionDuration);
-    Route<dynamic> route = routeMatch.route;
     Completer<T> completer = Completer<T>();
-    if (routeMatch.matchType == RouteMatchType.nonVisual) {
+
+    var route = routeMatch.route;
+    var matchType = routeMatch.matchType;
+    if (matchType == RouteMatchType.nonVisual) {
       // Non visual route type.
       completer.complete();
     } else {
-      if (route == null && notFoundHandler != null) {
-        route = _notFoundRoute(context, path, arguments);
-      }
       if (route != null) {
         if (clearStack) {
           Navigator.pushAndRemoveUntil<T>(context, route, (check) => false)
@@ -95,132 +96,98 @@ class Router {
   }
 
   ///
-  Route<Null> _notFoundRoute(
-      BuildContext context, String path, Object arguments) {
-    RouteCreator<Null> creator =
-        (RouteSettings routeSettings, Map<String, List<String>> parameters) {
-      return MaterialPageRoute<Null>(
-          settings: routeSettings,
-          builder: (BuildContext context) {
-            return notFoundHandler.handlerFunc(context, parameters, arguments);
-          });
-    };
-    return creator(RouteSettings(name: path), null);
-  }
-
-  ///
-  RouteMatch matchRoute(BuildContext buildContext, RouteSettings routeSettings,
-      {TransitionType transitionType,
-      Duration transitionDuration = const Duration(milliseconds: 250),
-      RouteTransitionsBuilder transitionsBuilder}) {
-    RouteSettings settingsToUse = routeSettings;
-    AppRouteMatch match = _routeTree.matchRoute(routeSettings.name);
-    AppRoute route = match?.route;
-    Handler handler = (route != null ? route.handler : notFoundHandler);
-    var transition = transitionType;
-    if (transitionType == null) {
-      transition = route != null ? route.transitionType : TransitionType.native;
-    }
-    if (route == null && notFoundHandler == null) {
-      return RouteMatch(
-          matchType: RouteMatchType.noMatch,
-          errorMessage: "No matching route was found");
-    }
-    Map<String, List<String>> parameters =
-        match?.parameters ?? <String, List<String>>{};
+  RouteMatch matchRoute(
+    BuildContext context,
+    RouteSettings routeSettings, {
+    TransitionType transitionType,
+    Duration transitionDuration = const Duration(milliseconds: 300),
+    RouteTransitionsBuilder transitionsBuilder,
+  }) {
+    var match = _routeTree.matchRoute(routeSettings.name);
+    var route = match?.route;
+    var handler = route?.handler ?? notFoundHandler;
+    var parameters = match?.parameters;
     var arguments = routeSettings.arguments;
-    if (handler.type == HandlerType.function) {
-      handler.handlerFunc(buildContext, parameters, arguments);
+    if (handler == null) {
+      return RouteMatch(matchType: RouteMatchType.noMatch);
+    } else if (handler.type == HandlerType.function) {
+      handler.handlerFunc(context, parameters, arguments);
       return RouteMatch(matchType: RouteMatchType.nonVisual);
     }
 
-    RouteCreator creator =
-        (RouteSettings routeSettings, Map<String, List<String>> parameters) {
-      bool isNativeTransition = (transition == TransitionType.native ||
-          transition == TransitionType.nativeModal);
-      if (isNativeTransition) {
-        if (Platform.isIOS) {
-          return CupertinoPageRoute<dynamic>(
-              settings: routeSettings,
-              fullscreenDialog: transition == TransitionType.nativeModal,
-              builder: (BuildContext context) {
-                return handler.handlerFunc(context, parameters, arguments);
-              });
-        } else {
-          return MaterialPageRoute<dynamic>(
-              settings: routeSettings,
-              fullscreenDialog: transition == TransitionType.nativeModal,
-              builder: (BuildContext context) {
-                return handler.handlerFunc(context, parameters, arguments);
-              });
-        }
-      } else if (transition == TransitionType.material ||
-          transition == TransitionType.materialFullScreenDialog) {
+    transitionType ??= route?.transitionType ?? TransitionType.native;
+    Route creator(
+      RouteSettings routeSettings,
+      Map<String, List<String>> parameters,
+    ) {
+      if (transitionType == TransitionType.native) {
         return MaterialPageRoute<dynamic>(
             settings: routeSettings,
-            fullscreenDialog:
-                transition == TransitionType.materialFullScreenDialog,
             builder: (BuildContext context) {
               return handler.handlerFunc(context, parameters, arguments);
             });
-      } else if (transition == TransitionType.cupertino ||
-          transition == TransitionType.cupertinoFullScreenDialog) {
-        return CupertinoPageRoute<dynamic>(
+      } else if (transitionType == TransitionType.nativeModal) {
+        return MaterialPageRoute<dynamic>(
             settings: routeSettings,
-            fullscreenDialog:
-                transition == TransitionType.cupertinoFullScreenDialog,
-            builder: (BuildContext context) {
+            fullscreenDialog: true,
+            builder: (context) {
               return handler.handlerFunc(context, parameters, arguments);
             });
       } else {
-        var routeTransitionsBuilder;
-        if (transition == TransitionType.custom) {
-          routeTransitionsBuilder = transitionsBuilder;
-        } else {
-          routeTransitionsBuilder = _standardTransitionsBuilder(transition);
-        }
         return PageRouteBuilder<dynamic>(
           settings: routeSettings,
-          pageBuilder: (BuildContext context, Animation<double> animation,
-              Animation<double> secondaryAnimation) {
+          pageBuilder: (context, animation, secondaryAnimation) {
             return handler.handlerFunc(context, parameters, arguments);
           },
           transitionDuration: transitionDuration,
-          transitionsBuilder: routeTransitionsBuilder,
+          transitionsBuilder: transitionType == TransitionType.custom
+              ? transitionsBuilder
+              : _transitionsBuilder(transitionType),
         );
       }
-    };
+    }
+
     return RouteMatch(
       matchType: RouteMatchType.visual,
-      route: creator(settingsToUse, parameters),
+      route: creator(routeSettings, parameters),
     );
   }
 
-  RouteTransitionsBuilder _standardTransitionsBuilder(
-      TransitionType transitionType) {
+  RouteTransitionsBuilder _transitionsBuilder(TransitionType transitionType) {
     return (BuildContext context, Animation<double> animation,
         Animation<double> secondaryAnimation, Widget child) {
       if (transitionType == TransitionType.fadeIn) {
-        return FadeTransition(opacity: animation, child: child);
+        return FadeTransition(
+          opacity: CurvedAnimation(
+            parent: animation,
+            curve: Curves.fastOutSlowIn,
+          ),
+          child: child,
+        );
       } else {
-        const Offset topLeft = const Offset(0.0, 0.0);
-        const Offset topRight = const Offset(1.0, 0.0);
-        const Offset bottomLeft = const Offset(0.0, 1.0);
-        Offset startOffset = bottomLeft;
-        Offset endOffset = topLeft;
+        Animatable<Offset> tween;
         if (transitionType == TransitionType.inFromLeft) {
-          startOffset = const Offset(-1.0, 0.0);
-          endOffset = topLeft;
+          tween = Tween<Offset>(
+            begin: const Offset(-1.0, 0.0),
+            end: Offset.zero,
+          );
         } else if (transitionType == TransitionType.inFromRight) {
-          startOffset = topRight;
-          endOffset = topLeft;
+          tween = Tween<Offset>(
+            begin: const Offset(1.0, 0.0),
+            end: Offset.zero,
+          );
+        } else {
+          tween = Tween<Offset>(
+            begin: const Offset(0.0, 1.0),
+            end: Offset.zero,
+          );
         }
-
         return SlideTransition(
-          position: Tween<Offset>(
-            begin: startOffset,
-            end: endOffset,
-          ).animate(animation),
+          position: CurvedAnimation(
+            parent: animation,
+            curve: Curves.linearToEaseOut,
+            reverseCurve: Curves.easeInToLinear,
+          ).drive(tween),
           child: child,
         );
       }

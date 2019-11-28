@@ -19,11 +19,12 @@ class Routes {
   static String deepLink = "/message";
 
   static void configureRoutes(Router router) {
-    // ignore: missing_return
-    router.notFoundHandler = Handler(handlerFunc: (BuildContext context,
-        Map<String, List<String>> params, Object arguments) {
-      print("ROUTE WAS NOT FOUND !!!");
-    });
+    router.notFoundHandler = Handler(
+        handlerFunc: (BuildContext context, Map<String, List<String>> params,
+            Object arguments) {
+          print("ROUTE WAS NOT FOUND !!!");
+        },
+        type: HandlerType.function);
     router.define(root, handler: rootHandler);
     router.define(demoSimple, handler: demoRouteHandler);
     router.define(demoSimpleFixedTrans,
