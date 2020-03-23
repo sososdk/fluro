@@ -37,9 +37,6 @@ class Router {
     return _routeTree.matchRoute(path);
   }
 
-  bool pop<T extends Object>(BuildContext context, [T result]) =>
-      Navigator.pop<T>(context, result);
-
   ///
   Future<T> navigateTo<T extends Object>(
     BuildContext context,
